@@ -1,6 +1,5 @@
-workspace = { members = ["nthfibo"] }
 [package]
-name = "tempconv"
+name = "nthfibo"
 version = "0.1.0"
 edition = "2021"
 
