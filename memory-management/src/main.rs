@@ -61,12 +61,44 @@ fn main() {
     println!("The string {st2} has length {len}");
 
     // References, basically pointers that you can use to reference a
-    // value instead of giving up the ownership. A reference is 
+    // value instead of giving up the ownership. A reference is
+    // created by adding an & before the variable.
     let st1 = String::from("some other loooooooooong string");
     let len = calculate_length_reference(&st1);
     println!("The string {st1} has length {len}");
 
+    // here we are passing a mutable reference, so basically this var
+    // can be changed by this function. It's really clear that it will
+    // change the value because it has &mut both here and in the
+    // function signature
+    // KEEP IN MIND, you can multiple borrows, but ONLY ONE MUTABLE
+    // BORROW ACTIVE. So if you have
+    //
+    // let s = String::from("sometext")
+    // let x = &s
+    // let y = &s
+    // 
+    // It will compile no problem. But
+    //
+    // let s = String::from("sometext")
+    // let x = &s
+    // let y = &s
+    // let k = &mut s
+    //
+    // Will throw an error because if you have a mutable borrow the
+    // readers (&s) could have the data suddently change under them.
+    // This is a data race, and Rust will not compile that.
+    let mut st2 = String::from("some string");
+    change(&mut st2);
+    println!("{st2}");
 
+    // Also keep in mind the fact that if a var goes out of scope it
+    // will be dropped. You cannot reference a val that has beed
+    // dropped, reason why is because the reference points to an area
+    // in memory that doesn't have your expected data.
+    //
+    // If you are closing a scope and want to keep the data, you'll
+    // have to allocate it to another var by returning it.
 }
 
 fn takes_ownership(some_string: String) {
@@ -86,6 +118,17 @@ fn calculate_length(s: String) -> (String, usize) {
     let length = s.len();
     (s, length)
 }
-fn calculate_length_reference(s: &String) -> usize {
+
+// Here we are specifying that we want a reference to a String
+// This function never has the ownership of s, so the caller s will
+// never be dropped. The action of creating a reference is called
+// BORROWING. Keep in mind that we cannot change the borrowed value.
+// For doing it we will need a mutable reference
+fn calculate_length_reference(s: &String) -> usize { 
     s.len()
+}
+
+// Example of mutable borrowed value
+fn change(s: &mut String) {
+    s.push_str(", incredibbile");
 }
