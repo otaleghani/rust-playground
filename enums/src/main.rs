@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug)
 enum IpAddrKind {
     V4,
     V6,
