@@ -1,5 +1,6 @@
 use crate::garden::vegetable::Leek;
 pub mod garden;
+mod house;
 // mod let's you import something
 
 // A crate can be of 2 types, binary and library
@@ -12,4 +13,5 @@ fn main() {
         name: String::from("samdro"),
     };
     println!("{}", new_leek.name);
+    house::check_on_brat();
 }
