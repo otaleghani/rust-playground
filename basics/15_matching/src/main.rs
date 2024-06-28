@@ -21,6 +21,14 @@ fn main() {
     let x = Some(1);
     let y = plus_one(x);
     println!("{:?}", check_number(return_int(y)));
+
+
+    let coin = Coin::Quarter(State::Anvedicomeballanando);
+    if let Coin::Quarter(state) = coin {
+        println!("This coin comes from {:?}", state);
+    } else {
+        println!("What is this shit?");
+    }
 }
 
 fn value(coin: Coin) -> i32 {

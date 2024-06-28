@@ -20,7 +20,7 @@ fn main() {
     let s2 = s1.clone();
     // This is how you'll create a deep copy, heap data gets copied
     // into the s2 variable
-    println!("s1: {s1} | s2: {s2}"); // Will throw an error
+    println!("s1: {s1} | s2: {s2}"); // Will not throw an error
     
     // With rust primitives whenever you do something like this you
     // are actually copying the data inside the stack. This is
