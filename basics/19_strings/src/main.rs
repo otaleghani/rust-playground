@@ -25,4 +25,27 @@ fn main() {
     let s3 = String::from("toe");
     let s = format!("{s1}-{s2}-{s3}");
     println!("{s}");
+
+    // In rust you cannot access an index of a string
+    // reason is that rust will return the "value", not 
+    // the actual letter. So "h" would be 104
+    // Also there are grapheme clusters: these are like in
+    // the accents, but instead of being in a separate char,
+    // they are like addable to a char and they take up one char.
+    // So instead you will use string slices
+    
+    println!("{}", &s[0..1]);
+    // always keep in mind that sometimes there are chars
+    // that take up 2 bytes, like the russian chars 
+    // Accessing one of the two bytes will crash the program
+    
+
+    // You can access both the single chars of a strings or
+    // the bytes if you need 
+    for c in "anvedi".chars() {
+        println!("{c}");
+    }
+    for c in "anvedi".bytes() {
+        println!("{c}");
+    }
 }

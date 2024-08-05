@@ -22,6 +22,13 @@ fn main() {
     for i in &v {
         println!("{}", *i*2);
     }
+    for i in &mut v {
+        *i = *i+50;
+    }
+
+    for i in &v {
+        println!("{}", i);
+    }
 
     // Vector have only one type, but that type could be an enum!
     #[derive(Debug)]
