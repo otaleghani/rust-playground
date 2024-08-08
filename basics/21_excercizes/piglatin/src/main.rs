@@ -1,4 +1,4 @@
-// use std::any::type_name;
+// use std::ny::type_name;
 // println!("{}", type_name::<char>());
 
 fn main() {

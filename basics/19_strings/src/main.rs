@@ -34,7 +34,7 @@ fn main() {
     // they are like addable to a char and they take up one char.
     // So instead you will use string slices
     
-    println!("{}", &s[0..1]);
+   println!("{}", &s[0..1]);
     // always keep in mind that sometimes there are chars
     // that take up 2 bytes, like the russian chars 
     // Accessing one of the two bytes will crash the program
