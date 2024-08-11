@@ -1,6 +1,5 @@
-use std::fs::File;
-use std::io::ErrorKind;
-use std::io::{self, Read};
+use std::fs::{self, File};
+use std::io::{self, Read, ErrorKind};
 
 fn main() {
     //_error_handling_matcth()
@@ -95,4 +94,13 @@ fn _question_operator_shorter() -> Result<String, io::Error> {
     Ok(username)
 }
 
-// an important thing to understand is that the ?
+// an important thing to understand is that the ? operator takes
+// the error found and runs it the from operator. This is a really
+// cool thing because we could have a custom error type that implements 
+// the From<io::Error>, so that we could return a out generic, custom
+// error instead of a prefixed one
+
+// also all of this stuff could be made with just the fs::read_to_string
+fn _shortest() -> Result<String, io::Error> {
+    fs::read_to_string("hello.tx")
+}
