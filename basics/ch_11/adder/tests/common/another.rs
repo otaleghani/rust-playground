@@ -1,3 +1,3 @@
 pub fn another_setup() {
-    println!("another setup bippibuppi");
+    println!("another setup bippibupp");
 }
