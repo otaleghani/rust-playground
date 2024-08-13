@@ -49,6 +49,56 @@ mod tests {
 
     #[test]
     fn iter_map() {
-        todo!();
+        // map is an iterator that produces another iterator
+        let v1: Vec<i32> = vec![1,2,3];
+        let v2: Vec<_> = v1.iter().map(|x| x + 1).collect();
+        assert_eq!(v2, [2,3,4]);
+    }
+}
+
+#[derive(PartialEq, Debug)]
+struct Shoe {
+    size: i32,
+    style: String,
+}
+
+fn shoes_in_size(shoes: Vec<Shoe>, shoe_size: i32) -> Vec<Shoe> {
+    shoes.into_iter().filter(|s| s.size == shoe_size).collect()
+}
+
+#[cfg(test)]
+mod shoe_tests {
+    use super::*;
+
+    #[test]
+    fn filter_by_size() {
+        let shoes = vec![
+            Shoe {
+                size: 10,
+                style: String::from("sneakers"),
+            },
+            Shoe {
+                size: 11,
+                style: String::from("stiletto"),
+            },
+            Shoe {
+                size: 10,
+                style: String::from("anvedi nando stile"),
+            }
+        ];
+        let in_my_size = shoes_in_size(shoes, 10);
+        assert_eq!(
+            in_my_size,
+            vec![
+                Shoe {
+                    size: 10,
+                    style: String::from("sneakers"),
+                },
+                Shoe {
+                    size: 10,
+                    style: String::from("anvedi nando stile"),
+                },
+            ]            
+        );
     }
 }
