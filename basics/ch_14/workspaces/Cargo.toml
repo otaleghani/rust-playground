@@ -1,0 +1,10 @@
+# Workspaces are a great way to divide into different crates a single big projects. To work with workspaces you first create a Cargo.toml like this one, then you cargo add pkg1 and cargo add pkg2 --lib. In this example we'll have one binary package and a library package. After this we add the different dependencies inside theier respective Cargo.toml. So in this case the binary Cargo.toml will add the lib dependency.
+ 
+# After all of this we can simply go cargo build in the top level dir to build the project. We can even cargo run and cargo test, or just build one part or run one part with cargo build -p pkg1
+[workspace]
+resolver = "2"
+
+members = [
+  "adder",
+  "add_one",
+]

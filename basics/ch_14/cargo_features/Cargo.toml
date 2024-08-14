@@ -1,0 +1,19 @@
+[package]
+name = "cargo_features"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+# customizing dev profile
+[profile.dev]
+opt-level = 0
+
+# customizing release profile
+[profile.release]
+opt-level = 3
+
+# creating a new profile
+[profile.alfredo]
+inherits = "dev"
+opt-level = 3
