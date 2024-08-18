@@ -64,4 +64,37 @@ pub mod test_supertrait {
         let v = Wrapper(vec![String::from("anvedi"), String::from("come balla Armando")]);
         v.outline_print();
     }
+
+    use std::thread;
+
+    #[test]
+    fn type_synonym() {
+        // type synonyms are also called type aliases and are usually used to 
+        // make lenghty types more easy to read
+        type Kilometers = i32;
+        let x: i32 = 5;
+        let y: Kilometers = 5;
+        println!("x + y = {}", x + y);
+
+        // imagine to have a lenghty type like this
+        // Basically this type describes a function (Fn()) that is Safe to send
+        // between threads (Send) and that is of the lifetime of static
+        type Thunk = Box<dyn Fn() + Send + 'static>;
+        let f: Thunk = Box::new(|| println!("hi"));
+
+        let handler = thread::spawn(move || {
+            f();
+        });
+
+        handler.join();
+        //f();
+    }
+
+    // this is an example of a never return. It's what a panic usually returns
+    //fn returns_never() -> ! {
+    //      --snip--
+    //}
+
 }
+
+

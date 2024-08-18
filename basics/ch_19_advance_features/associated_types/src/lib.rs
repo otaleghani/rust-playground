@@ -2,6 +2,8 @@
 // Sometimes you'll have methods with the same name
 
 mod supertrait;
+mod functions_pointers;
+mod returning_closures;
 
 trait Pilot {
     fn fly(&self);
