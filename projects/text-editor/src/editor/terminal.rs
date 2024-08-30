@@ -73,7 +73,7 @@ impl Terminal {
         Ok(())
     }
 
-    pub fn print<T: Display>(s: T) -> Result<(), Error> {
+    pub fn print(s: &str) -> Result<(), Error> {
         Self::queue_command(Print(s))?;
         Ok(())
     }
