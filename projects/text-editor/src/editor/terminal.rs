@@ -3,7 +3,7 @@ use crossterm::cursor::{MoveTo, Hide, Show};
 use crossterm::{queue, Command};
 use crossterm::style::Print;
 use std::io::{stdout, Write, Error};
-use std::fmt::Display;
+//use std::fmt::Display;
 
 #[derive(Copy, Clone)]
 pub struct Size {
