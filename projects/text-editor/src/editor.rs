@@ -12,17 +12,10 @@ use terminal::{Terminal, Size, Position};
 mod view;
 use view::View;
 
-
-#[derive(Copy, Clone, Default)]
-struct Location {
-    x: usize,
-    y: usize
-}
-
 #[derive(Default)]
 pub struct Editor {
     should_quit: bool,
-    location: Location,
+    // location: Location,
     view: View,
 }
 
@@ -34,26 +27,19 @@ impl Editor {
             current_hook(panic_info)
         }));
         Terminal::initialize()?;
-        let mut view = View::default;
-        let args: Vec<String> = env::args().collect;
+        let mut view = View::default();
+        let args: Vec<String> = env::args().collect();
         if let Some(file_name) = args.get(1) {
             view.load(file_name);
         }
-        Ok( Self {
+        Ok(Self {
             should_quit: false,
-            location: Location::default();
             view,
         })
     }
 
-    fn handle_args(&mut self) {
-        let args: Vec<String> = env::args().collect();
-        if let Some(file_name) = args.get(1) {
-            self.view.load(file_name);
-        }
-    }
 
-    fn repl(&mut self) {
+    pub fn run(&mut self) {
         loop {
             self.refresh_screen();
             if self.should_quit {
@@ -72,23 +58,24 @@ impl Editor {
     }
 
     fn move_point(&mut self, key_code: KeyCode) {
-        let Location { mut x, mut y } = self.location;
-        let Size { height, width } = Terminal::size().unwrap_or_default();
+        // let Location { mut x, mut y } = self.location;
+        // let Size { height, width } = Terminal::size().unwrap_or_default();
         match key_code {
             KeyCode::Up => {
-                y = y.saturating_sub(1);
+                self.view.move_up();
+                //y = y.saturating_sub(1);
             }
             KeyCode::Down => {
-                y = min(height.saturating_sub(1), y.saturating_add(1));
+                //y = min(height.saturating_sub(1), y.saturating_add(1));
             }
             KeyCode::Left => {
-                x = x.saturating_sub(1);
+                //x = x.saturating_sub(1);
             }
             KeyCode::Right => {
-                x = min(width.saturating_sub(1), x.saturating_add(1));
+                //x = min(width.saturating_sub(1), x.saturating_add(1));
             }
             KeyCode::PageUp => {
-                y = 0;
+                //y = 0;
             }
             KeyCode::PageDown => {
                 y = height.saturating_sub(1);
@@ -102,7 +89,7 @@ impl Editor {
             _ => (),
         }
         self.location = Location { x, y };
-        Ok(())
+        //Ok(())
     }
 
     #[allow(clippy::needless_pass_by_value)]
@@ -143,7 +130,7 @@ impl Editor {
             }
             _ => {}
         }
-        Ok(())
+        // Ok(())
     }
 
     fn refresh_screen(&mut self) {
@@ -151,9 +138,10 @@ impl Editor {
         self.view.render();
 
         let _ = Terminal::move_caret_to(Position {
-            col: self.location.x,
-            row: self.location.y,
+            col: self.view.location.x,
+            row: self.view.location.y,
         });
+
         let _ = Terminal::show_caret();
         let _ = Terminal::execute();
     }
@@ -163,7 +151,7 @@ impl Drop for Editor {
     fn drop(&mut self) {
         let _ = Terminal::terminate();
         if self.should_quit {
-            let _ Terminal::print("Goodbye\r\n");
+            let _ = Terminal::print("Goodbye\r\n");
         }
     }
 }

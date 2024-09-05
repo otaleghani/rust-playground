@@ -1,15 +1,22 @@
-use std::io::{Error};
-use super::terminal::{Terminal, Size, Position};
+use super::terminal::{Terminal, Size};
 mod buffer;
 use buffer::{Buffer};
 
 const NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+#[derive(Copy, Clone, Default)]
+struct Location {
+    x: usize,
+    y: usize
+}
+
 pub struct View {
     buffer: Buffer,
     needs_redraw: bool,
     size: Size,
+    location: Location,         // caret location
+    scroll_offset: Location,    // offset location
 }
 
 impl View {
@@ -18,22 +25,19 @@ impl View {
         self.needs_redraw = true;
     }
 
-    fn render_line(at: usize, line_text: &str) -> Result<(), Error> *{
-        Terminal::move_caret_to(Position { row: at, col: 0 })?;
-        Terminal::clear_line()?;
-        Terminal::print(line_text)?;
-        Ok(())
+    fn render_line(at: usize, line_text: &str) {
+        let result = Terminal::print_row(at, line_text);
+        debug_assert!(result.is_ok(), "Failed to render line");
     }
 
-
-    pub fn render(&mut self) -> Result<(), Error> {
+    pub fn render(&mut self) {
         if !self.needs_redraw {
-            return Ok(());
+            return;
         }
 
         let Size { height, width } = self.size;
         if height == 0 || width == 0 {
-            return Ok(());
+            return;
         }
 
         #[allow(clippy::integer_division)]
@@ -46,17 +50,17 @@ impl View {
                 } else {
                     line
                 };
-                Self::render_line(current_row, truncated_line)?;
+                Self::render_line(current_row, truncated_line);
 
             } else if current_row == vertical_center && self.buffer.is_empty() {
-                Self::render_line(current_row, &Self::build_welcome_message(width))?;
+                Self::render_line(current_row, &Self::build_welcome_message(width));
 
             } else {
-                Self::render_line(current_row, "~")?;
+                Self::render_line(current_row, "~");
             }
         }
         self.needs_redraw = false;
-        Ok(())
+        //Ok(())
     }
 
     fn build_welcome_message(width: usize) -> String {
@@ -82,60 +86,43 @@ impl View {
         }
     }
 
+    // movement
+    pub fn move_up(&mut self) {
+        let mut y = self.location.y;
+        y = y.saturating_sub(1);
+        self.location.y = y;
+    }
+    pub fn move_down(&mut self) {
+        let mut y = self.location.y;
+        let Size { height, _ } = Terminal::size().unwrap_or_default();
+        y = min(height.saturating_sub(1), y.saturating_add(1));
+        self.location.y = y;
+    }
+    pub fn move_left(&mut self) {
+        let mut x = self.location.x;
+        x = x.saturating_sub(1);
+        self.location.x = x;
+    }
+    pub fn move_right(&mut self) {
+        let mut x = self.location.x;
+        let Size { width, _ } = Terminal::size().unwrap_or_default();
+        x = min(width.saturating_sub(1), x.saturating_add(1));
+        self.location.x = x;
+    }
 
-
-    // fn draw_welcome_message() -> Result<(), Error> {
-    //     let mut welcome_message = format!("{NAME} {VERSION}");
-    //     let width = Terminal::size()?.width;
-    //     let len = welcome_message.len();
-    //     #[allow(clippy::integer_division)]
-    //     let padding = width.saturating_sub(len) / 2;
-    //     let spaces = " ".repeat(padding.saturating_sub(1));
-    //     welcome_message = format!("~{spaces} {welcome_message}");
-    //     welcome_message.truncate(width);
-    //     Terminal::print(&welcome_message)?;
-    //     Ok(())
-    // }
-    //
-    // fn draw_empty_row() -> Result<(), Error> {
-    //     Terminal::print("~")?;
-    //     Ok(())
-    // }
-    //
-    // pub fn render_welcome_screen() -> Result<(), Error> {
-    //     let Size{ height, .. } = Terminal::size()?;
-    //     for current_row in 0..height {
-    //         Terminal::clear_line()?;
-    //         #[allow(clippy::integer_division)]
-    //         if current_row == height / 3 {
-    //             Self::draw_welcome_message()?;
-    //         } else {
-    //             Self::draw_empty_row()?;
-    //         }
-    //         if current_row.saturating_add(1) < height {
-    //             
-    //             // Terminal::print("\r\n")?;
-    //         }
-    //     }
-    //     Ok(())
-    // }
-    // pub fn render_buffer(&self) -> Result<(), Error> {
-    //     let Size{ height, .. } = Terminal::size()?;
-    //     for current_row in 0..height {
-    //         Terminal::clear_line()?;
-    //         if let Some(line) = self.buffer.lines.get(current_row) {
-    //             let _ = Terminal::print(line);
-    //             let _ = Terminal::print("\r\n");
-    //             continue;
-    //         } else {
-    //             Self::draw_empty_row()?;
-    //         }
-    //         if current_row.saturating_add(1) < height {
-    //             // Terminal::print("\r\n")?;
-    //         }
-    //     }
-    //     Ok(())
-    // }
+    pub fn width_start(&mut self) {
+        self.location.x = 0;
+    }
+    pub fn width_end(&mut self) {
+        // here I should go left the buffer
+    }
+    pub fn height_start(&mut self) {
+        self.location.y = 0;
+    }
+    pub fn height_end(&mut self) {
+        // here I should go down the buffer
+        self.buffer.len()
+    }
 }
 
 impl Default for View {
@@ -144,6 +131,8 @@ impl Default for View {
             buffer: Buffer::default(),
             needs_redraw: true,
             size: Terminal::size().unwrap_or_default(),
+            location: Location::default(),
+            scroll_offset: Location::default(),
         }
     }
 }

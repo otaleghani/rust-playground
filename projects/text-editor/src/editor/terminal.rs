@@ -1,7 +1,15 @@
-use crossterm::terminal::{enable_raw_mode, disable_raw_mode, Clear, ClearType, size};
 use crossterm::cursor::{MoveTo, Hide, Show};
-use crossterm::{queue, Command};
 use crossterm::style::Print;
+use crossterm::terminal::{
+    enable_raw_mode, 
+    disable_raw_mode, 
+    Clear, 
+    ClearType, 
+    size,
+    EnterAlternateScreen,
+    LeaveAlternateScreen,
+};
+use crossterm::{queue, Command};
 use std::io::{stdout, Write, Error};
 
 #[derive(Default, Copy, Clone)]
@@ -19,20 +27,24 @@ pub struct Position {
 pub struct Terminal;
 
 impl Terminal {
-    pub fn initialize() -> Result<(), Error> {
-        enable_raw_mode()?;
-        Self::clear_screen()?;
-        Self::move_caret_to(Position{ 
-            col: 0, 
-            row: 0,
-        })?;
+
+    pub fn terminate() -> Result<(), Error> {
+        Self::leave_alternate_screen()?;
+        Self::show_caret()?;
         Self::execute()?;
+        disable_raw_mode()?;
         Ok(())
     }
 
-    pub fn terminate() -> Result<(), Error> {
+    pub fn initialize() -> Result<(), Error> {
+        enable_raw_mode()?;
+        Self::enter_alternate_screen()?;
+        Self::clear_screen()?;
+        // Self::move_caret_to(Position{ 
+        //     col: 0, 
+        //     row: 0,
+        // })?;
         Self::execute()?;
-        disable_raw_mode()?;
         Ok(())
     }
 
@@ -46,12 +58,21 @@ impl Terminal {
         Ok(())
     }
 
-
     pub fn move_caret_to(position: Position) -> Result<(), Error> {
         #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
         Self::queue_command(MoveTo(position.col as u16, position.row as u16))?;
         Ok(())
     }
+
+    pub fn enter_alternate_screen() -> Result<(), Error> {
+        Self::queue_command(EnterAlternateScreen)?;
+        Ok(())
+    }
+    pub fn leave_alternate_screen() -> Result<(), Error> {
+        Self::queue_command(LeaveAlternateScreen)?;
+        Ok(())
+    }
+
 
     pub fn size() -> Result<Size, Error> {
         let (width_u16, height_u16) = size()?;
@@ -74,6 +95,13 @@ impl Terminal {
 
     pub fn print(s: &str) -> Result<(), Error> {
         Self::queue_command(Print(s))?;
+        Ok(())
+    }
+
+    pub fn print_row(row: usize, line_text: &str) -> Result<(), Error> {
+        Self::move_caret_to(Position { row, col: 0 })?;
+        Self::clear_line()?;
+        Self::print(line_text)?;
         Ok(())
     }
 
