@@ -1,4 +1,6 @@
-use super::terminal::{Terminal, Size};
+use core::cmp::min;
+use crossterm::event::{KeyCode};
+use super::terminal::{Terminal, Size, Position};
 mod buffer;
 use buffer::{Buffer};
 
@@ -8,7 +10,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 #[derive(Copy, Clone, Default)]
 struct Location {
     x: usize,
-    y: usize
+    y: usize,
 }
 
 pub struct View {
@@ -44,7 +46,9 @@ impl View {
         let vertical_center = height / 3;
 
         for current_row in 0..height {
-            if let Some(line) = self.buffer.lines.get(current_row) {
+            // here we need to start from current_row + scroll offset
+            if let Some(line) = self.buffer.lines.get(
+                current_row + self.scroll_offset.y) {
                 let truncated_line = if line.len() >= width {
                     &line[0..width]
                 } else {
@@ -60,6 +64,11 @@ impl View {
             }
         }
         self.needs_redraw = false;
+
+        let _ = Terminal::move_caret_to(Position{
+            col: self.location.x,
+            row: self.location.y,
+        });
         //Ok(())
     }
 
@@ -96,21 +105,27 @@ impl View {
         if self.location.y == 0 && self.scroll_offset.y != 0 {
             let mut scroll_y = self.scroll_offset.y;
             scroll_y = scroll_y.saturating_sub(1);
-            self.scroll_offset = scroll_y;
-            self.needs_redraw = true;
+            self.scroll_offset.y = scroll_y;
         }
         y = y.saturating_sub(1);
         self.location.y = y;
+        self.needs_redraw = true;
     }
     pub fn move_down(&mut self) {
-        let mut y = self.location.y;
-        let Size { height, _ } = Terminal::size().unwrap_or_default();
+        let Location { mut y, x } = self.location;
+        let Size { height, .. } = Terminal::size().unwrap_or_default();
         
         // You move downward when:
         //  1. height.saturating_sub(1) == y // you are at the y edge
         //  2. scroll_offset != self.buffer.length
+        if self.location.y == height.saturating_sub(1) && self.scroll_offset.y != self.buffer.lines.len() {
+            let mut scroll_y = self.scroll_offset.y;
+            scroll_y = scroll_y.saturating_sub(1);
+            self.scroll_offset.y = scroll_y;
+        }
         y = min(height.saturating_sub(1), y.saturating_add(1));
-        self.location.y = y;
+        self.location = Location { x, y };
+        self.needs_redraw = true;
     }
     pub fn move_left(&mut self) {
         let mut x = self.location.x;
@@ -121,7 +136,7 @@ impl View {
     }
     pub fn move_right(&mut self) {
         let mut x = self.location.x;
-        let Size { width, _ } = Terminal::size().unwrap_or_default();
+        let Size { width, .. } = Terminal::size().unwrap_or_default();
         x = min(width.saturating_sub(1), x.saturating_add(1));
         self.location.x = x;
 
@@ -130,8 +145,6 @@ impl View {
 
     pub fn width_start(&mut self) {
         self.location.x = 0;
-
-
     }
     pub fn width_end(&mut self) {
         self.location.x = self.buffer.longest();
@@ -145,10 +158,45 @@ impl View {
         self.location.y = 0;
     }
     pub fn height_end(&mut self) {
-        self.buffer.len();
+        //self.buffer.lines.len();
         if self.location.y > self.size.height {
             self.scroll_offset.y = self.location.y - self.size.height;
         }
+        self.needs_redraw = true;
+    }
+
+    pub fn move_point(&mut self, key_code: KeyCode) {
+        let Location { x, y } = self.location;
+        let Size { height, width } = Terminal::size().unwrap_or_default();
+
+        match key_code {
+            KeyCode::Up => {
+
+            }
+            KeyCode::Down => {
+
+            }
+            KeyCode::Left => {
+
+            }
+            KeyCode::Right => {
+
+            }
+            KeyCode::PageUp => {
+
+            }
+            KeyCode::PageDown => {
+
+            }
+            KeyCode::Home => {
+
+            }
+            KeyCode::End => {
+                
+            }
+            _ => (),
+        }
+        self.location = Location { x, y };
         self.needs_redraw = true;
     }
 }

@@ -57,41 +57,6 @@ impl Editor {
         }
     }
 
-    fn move_point(&mut self, key_code: KeyCode) {
-        // let Location { mut x, mut y } = self.location;
-        // let Size { height, width } = Terminal::size().unwrap_or_default();
-        match key_code {
-            KeyCode::Up => {
-                self.view.move_up();
-                //y = y.saturating_sub(1);
-            }
-            KeyCode::Down => {
-                //y = min(height.saturating_sub(1), y.saturating_add(1));
-            }
-            KeyCode::Left => {
-                //x = x.saturating_sub(1);
-            }
-            KeyCode::Right => {
-                //x = min(width.saturating_sub(1), x.saturating_add(1));
-            }
-            KeyCode::PageUp => {
-                //y = 0;
-            }
-            KeyCode::PageDown => {
-                y = height.saturating_sub(1);
-            }
-            KeyCode::Home => {
-                x = 0;
-            }
-            KeyCode::End => {
-                x = width.saturating_sub(1);
-            }
-            _ => (),
-        }
-        self.location = Location { x, y };
-        //Ok(())
-    }
-
     #[allow(clippy::needless_pass_by_value)]
     fn evaluate_event(&mut self, event: Event) {
         match event {
@@ -137,10 +102,10 @@ impl Editor {
         let _ = Terminal::hide_caret();
         self.view.render();
 
-        let _ = Terminal::move_caret_to(Position {
-            col: self.view.location.x,
-            row: self.view.location.y,
-        });
+        //let _ = Terminal::move_caret_to(Position {
+        //    col: self.view.location.x,
+        //    row: self.view.location.y,
+        //});
 
         let _ = Terminal::show_caret();
         let _ = Terminal::execute();

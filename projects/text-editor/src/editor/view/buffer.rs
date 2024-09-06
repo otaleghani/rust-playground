@@ -24,8 +24,8 @@ impl Buffer {
     }
 
     pub fn longest(&self) -> usize {
-        let longest = 0;
-        for value in self.lines {
+        let mut longest = 0;
+        for value in &self.lines {
             if value.len() > longest {
                 longest = value.len();
             }
