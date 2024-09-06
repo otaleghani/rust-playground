@@ -89,12 +89,26 @@ impl View {
     // movement
     pub fn move_up(&mut self) {
         let mut y = self.location.y;
+
+        // You move upward when:
+        //  1. is the location.y (caret) 0?
+        //  2. is the scroll_offset.y != 0?
+        if self.location.y == 0 && self.scroll_offset.y != 0 {
+            let mut scroll_y = self.scroll_offset.y;
+            scroll_y = scroll_y.saturating_sub(1);
+            self.scroll_offset = scroll_y;
+            self.needs_redraw = true;
+        }
         y = y.saturating_sub(1);
         self.location.y = y;
     }
     pub fn move_down(&mut self) {
         let mut y = self.location.y;
         let Size { height, _ } = Terminal::size().unwrap_or_default();
+        
+        // You move downward when:
+        //  1. height.saturating_sub(1) == y // you are at the y edge
+        //  2. scroll_offset != self.buffer.length
         y = min(height.saturating_sub(1), y.saturating_add(1));
         self.location.y = y;
     }
@@ -102,26 +116,40 @@ impl View {
         let mut x = self.location.x;
         x = x.saturating_sub(1);
         self.location.x = x;
+
+        // Redraw if the scroll_offset is not 0
     }
     pub fn move_right(&mut self) {
         let mut x = self.location.x;
         let Size { width, _ } = Terminal::size().unwrap_or_default();
         x = min(width.saturating_sub(1), x.saturating_add(1));
         self.location.x = x;
+
+        // Redraw if the scroll_offset is not 0
     }
 
     pub fn width_start(&mut self) {
         self.location.x = 0;
+
+
     }
     pub fn width_end(&mut self) {
-        // here I should go left the buffer
+        self.location.x = self.buffer.longest();
+
+        if self.location.x > self.size.width {
+            self.scroll_offset.x = self.location.x - self.size.width;
+        }
+        self.needs_redraw = true;
     }
     pub fn height_start(&mut self) {
         self.location.y = 0;
     }
     pub fn height_end(&mut self) {
-        // here I should go down the buffer
-        self.buffer.len()
+        self.buffer.len();
+        if self.location.y > self.size.height {
+            self.scroll_offset.y = self.location.y - self.size.height;
+        }
+        self.needs_redraw = true;
     }
 }
 
