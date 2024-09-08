@@ -1,4 +1,3 @@
-use core::cmp::min;
 use crossterm::event::{read, Event, KeyCode, 
     KeyEvent, KeyEventKind, KeyModifiers,
 };
@@ -8,7 +7,7 @@ use std::{
     panic::{set_hook, take_hook},
 };
 mod terminal;
-use terminal::{Terminal, Size, Position};
+use terminal::{Terminal, Size};
 mod view;
 use view::View;
 
@@ -80,7 +79,7 @@ impl Editor {
                     | KeyCode::Home,
                     _,
                 ) => {
-                    self.move_point(code);
+                    self.view.move_point(code);
                 }
                 _ => {}
             },
