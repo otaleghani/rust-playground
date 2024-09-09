@@ -49,12 +49,12 @@ impl View {
             // here we need to start from current_row + scroll offset
             if let Some(line) = self.buffer.lines.get(current_row + self.scroll_offset.y) {
                 // here we need to start from scroll_x 
-                let truncated_line = if line.len() >= width {
-                    &line[self.scroll_offset.x..width]
-                } else if line.len() >= self.scroll_offset.x {
-                    &line[self.scroll_offset.x..line.len()]
-                } else {
+                let truncated_line = if line.len() <= self.scroll_offset.x || line.len() == 0 {
                     ""
+                } else if line.len() >= self.scroll_offset.x && line.len() - self.scroll_offset.x >= width {
+                    &line[self.scroll_offset.x..width+self.scroll_offset.x]
+                } else {
+                    &line[self.scroll_offset.x..]
                 };
                 Self::render_line(current_row, truncated_line);
 
@@ -97,86 +97,64 @@ impl View {
         }
     }
 
-
-    // movement
-    pub fn width_start(&mut self) {
-        self.location.x = 0;
-    }
-
-    pub fn width_end(&mut self) {
-        self.location.x = self.buffer.longest();
-
-        if self.location.x > self.size.width {
-            self.scroll_offset.x = self.location.x - self.size.width;
-        }
-        self.needs_redraw = true;
-    }
-
-    pub fn height_start(&mut self) {
-        self.location.y = 0;
-    }
-
-    pub fn height_end(&mut self) {
-        //self.buffer.lines.len();
-        if self.location.y > self.size.height {
-            self.scroll_offset.y = self.location.y - self.size.height;
-        }
-        self.needs_redraw = true;
-    }
-
     pub fn move_point(&mut self, key_code: KeyCode) {
         let Location { mut x, mut y } = self.location;
+        let Location { x: mut scroll_x, y: mut scroll_y } = self.scroll_offset;
         let Size { height, width } = Terminal::size().unwrap_or_default();
 
         match key_code {
             KeyCode::Up => {
                 if self.location.y == 0 && self.scroll_offset.y != 0 {
-                    let mut scroll_y = self.scroll_offset.y;
                     scroll_y = scroll_y.saturating_sub(1);
-                    self.scroll_offset.y = scroll_y;
                 }
                 y = y.saturating_sub(1);
             }
             KeyCode::Down => {
                 // You move down the page when you are at the edge of the screen
                 if self.location.y == height.saturating_sub(1) && self.scroll_offset.y != self.buffer.lines.len() {
-                    let mut scroll_y = self.scroll_offset.y;
                     scroll_y = scroll_y.saturating_add(1);
-                    self.scroll_offset.y = scroll_y;
                 }
                 y = min(height.saturating_sub(1), y.saturating_add(1));
             }
             KeyCode::Left => {
                 if self.location.x == 0 && self.scroll_offset.y != 0 {
-                    let mut scroll_x = self.scroll_offset.x;
                     scroll_x = scroll_x.saturating_sub(1);
-                    self.scroll_offset.x = scroll_x;
                 }
                 x = x.saturating_sub(1);
             }
             KeyCode::Right => {
                 if self.location.x == width.saturating_sub(1) && self.scroll_offset.y != self.buffer.longest() {
-                    let mut scroll_x = self.scroll_offset.x;
                     scroll_x = scroll_x.saturating_add(1);
-                    self.scroll_offset.x = scroll_x;
                 }
                 x = min(width.saturating_sub(1), x.saturating_add(1));
             }
             KeyCode::PageUp => {
-                self.height_start();
+                y = 0;
+                scroll_y = 0;
             }
             KeyCode::PageDown => {
-                self.height_end();
+                y = self.buffer.lines.len();
+                if y >= height.saturating_sub(1) {
+                    y = height.saturating_sub(1); 
+                    scroll_y = self.buffer.lines.len() - height;
+                }
             }
             KeyCode::Home => {
-                self.width_start();
+                x = 0;
+                scroll_x = 0;
             }
             KeyCode::End => {
-                self.width_end();
+                if let Some(line) = self.buffer.lines.get(y + scroll_y) {
+                    x = line.len();
+                    if x >= width.saturating_sub(1) {
+                        scroll_x = x - width;
+                    }
+                }
             }
             _ => (),
         }
         self.location = Location { x, y };
+        self.scroll_offset = Location { x: scroll_x, y: scroll_y };
         self.needs_redraw = true;
     }
 }
