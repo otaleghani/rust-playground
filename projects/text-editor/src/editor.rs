@@ -1,20 +1,19 @@
-use crossterm::event::{read, Event, KeyCode, 
-    KeyEvent, KeyEventKind, KeyModifiers,
-};
+use crossterm::event::{read, Event, KeyEvent, KeyEventKind};
 use std::{
     env, 
     io::Error,
     panic::{set_hook, take_hook},
 };
 mod terminal;
-use terminal::{Terminal, Size};
 mod view;
+use terminal::Terminal;
 use view::View;
+
+use editorcommand::EditorCommand;
 
 #[derive(Default)]
 pub struct Editor {
     should_quit: bool,
-    // location: Location,
     view: View,
 }
 
@@ -58,54 +57,40 @@ impl Editor {
 
     #[allow(clippy::needless_pass_by_value)]
     fn evaluate_event(&mut self, event: Event) {
-        match event {
-            Event::Key(KeyEvent {
-                code,
-                kind: KeyEventKind::Press,
-                modifiers,
-                ..
-            }) => match (code, modifiers) {
-                (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
-                    self.should_quit = true;
-                }
-                (
-                    KeyCode::Up
-                    | KeyCode::Down
-                    | KeyCode::Left
-                    | KeyCode::Right
-                    | KeyCode::PageDown
-                    | KeyCode::PageUp
-                    | KeyCode::End
-                    | KeyCode::Home,
-                    _,
-                ) => {
-                    self.view.move_point(code);
-                }
-                _ => {}
-            },
-            Event::Resize(width_u16, height_u16) => {
-                #[allow(clippy::as_conversions)]
-                let height = height_u16 as usize;
-
-                #[allow(clippy::as_conversions)]
-                let width = width_u16 as usize;
-
-                self.view.resize(Size { width, height });
-            }
-            _ => {}
+        let should_process = match &event {
+            Event::Key(KeyEvent {kind, .. }) => kind == &KeyEventKind::Press,
+            Event::Resize::Resize(_, _) => true,
+            _ => false,
         }
-        // Ok(())
+        
+        if should_process {
+            match EditorCommand::try_from(event) {
+                Ok(command) => {
+                    if matches!(commad, EditorCommand::Quit) {
+                        self.should_quit = true;
+                    } else {
+                        self.view.handle_command(command);
+                    }
+                }
+                Err(err) => {
+                    #[cfg(debug_assertions)]
+                    {
+                        panic!("Could not handle command: {err}");
+                    }
+                }
+            }
+        } else {
+            #[cfg(debug_assertions)]
+            {
+                panic!("Received and discarted unsupported or non-press event.");
+            }
+        }
     }
 
     fn refresh_screen(&mut self) {
         let _ = Terminal::hide_caret();
         self.view.render();
-
-        //let _ = Terminal::move_caret_to(Position {
-        //    col: self.view.location.x,
-        //    row: self.view.location.y,
-        //});
-
+        let _ = Terminal::move_caret_to(self.view.get_position());
         let _ = Terminal::show_caret();
         let _ = Terminal::execute();
     }

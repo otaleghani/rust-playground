@@ -1,8 +1,12 @@
-use core::cmp::min;
-use crossterm::event::{KeyCode};
-use super::terminal::{Terminal, Size, Position};
+use super::{
+    editorcommand::{Direction, EditorCommand},
+    terminal::{Terminal, Size, Position},
+};
 mod buffer;
 use buffer::{Buffer};
+mod location;
+use location::Location;
+mod line;
 
 const NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -17,21 +21,11 @@ pub struct View {
     buffer: Buffer,
     needs_redraw: bool,
     size: Size,
-    location: Location,         // caret location
-    scroll_offset: Location,    // offset location
+    location: Location,
+    scroll_offset: Location,
 }
 
 impl View {
-    pub fn resize(&mut self, to: Size) {
-        self.size = to;
-        self.needs_redraw = true;
-    }
-
-    fn render_line(at: usize, line_text: &str) {
-        let result = Terminal::print_row(at, line_text);
-        debug_assert!(result.is_ok(), "Failed to render line");
-    }
-
     pub fn render(&mut self) {
         if !self.needs_redraw {
             return;
@@ -44,11 +38,14 @@ impl View {
 
         #[allow(clippy::integer_division)]
         let vertical_center = height / 3;
-
+        let top = self.scroll_offset.y;
         for current_row in 0..height {
-            // here we need to start from current_row + scroll offset
-            if let Some(line) = self.buffer.lines.get(current_row + self.scroll_offset.y) {
-                // here we need to start from scroll_x 
+            if let Some(line) = self.buffer.lines.get(current_row.saturating_add(top)) {
+                let left = self.scroll_offset.x;
+                let right = self.scroll_offset.x.saturating_add(width);
+                Self::render_line(current_row, &line.get(left..right));
+
+
                 let truncated_line = if line.len() <= self.scroll_offset.x || line.len() == 0 {
                     ""
                 } else if line.len() >= self.scroll_offset.x && line.len() - self.scroll_offset.x >= width {
@@ -156,6 +153,16 @@ impl View {
         self.location = Location { x, y };
         self.scroll_offset = Location { x: scroll_x, y: scroll_y };
         self.needs_redraw = true;
+    }
+
+    fn resize(&mut self, to: Size) {
+        self.size = to;
+        self.needs_redraw = true;
+    }
+
+    fn render_line(at: usize, line_text: &str) {
+        let result = Terminal::print_row(at, line_text);
+        debug_assert!(result.is_ok(), "Failed to render line");
     }
 }
 
