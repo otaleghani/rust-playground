@@ -39,36 +39,106 @@ impl View {
         #[allow(clippy::integer_division)]
         let vertical_center = height / 3;
         let top = self.scroll_offset.y;
+
         for current_row in 0..height {
             if let Some(line) = self.buffer.lines.get(current_row.saturating_add(top)) {
                 let left = self.scroll_offset.x;
                 let right = self.scroll_offset.x.saturating_add(width);
                 Self::render_line(current_row, &line.get(left..right));
-
-
-                let truncated_line = if line.len() <= self.scroll_offset.x || line.len() == 0 {
-                    ""
-                } else if line.len() >= self.scroll_offset.x && line.len() - self.scroll_offset.x >= width {
-                    &line[self.scroll_offset.x..width+self.scroll_offset.x]
-                } else {
-                    &line[self.scroll_offset.x..]
-                };
-                Self::render_line(current_row, truncated_line);
-
             } else if current_row == vertical_center && self.buffer.is_empty() {
                 Self::render_line(current_row, &Self::build_welcome_message(width));
-
             } else {
                 Self::render_line(current_row, "~");
             }
         }
-        self.needs_redraw = false;
 
-        let _ = Terminal::move_caret_to(Position{
-            col: self.location.x,
-            row: self.location.y,
-        });
-        //Ok(())
+        self.needs_redraw = false;
+    }
+
+    pub fn handle_command(&mut self, command: EditorCommand) {
+        match command {
+            EditorCommand::Resize(size) => self.resize(size),
+            EditorCommand::Move(direction) => self.move_text_location(&direction),
+            EditorCommand::Quit => {}
+        }
+    }
+
+    pub fn load(&mut self, file_name: &str) {
+        if let Ok(buffer) = Buffer::load(file_name) {
+            self.buffer = buffer;
+            self.needs_redraw = true;
+        }
+    }
+
+    pub fn get_position(&self) -> Position {
+        self.location.subtract(&self.scroll_offset).into()
+    }
+
+    fn move_text_location(&mut self, direction: &Direction) {
+        let Location { mut x, mut y } = self.location;
+        let Size { width, height } = self.size;
+        match direction {
+            Direction::Up => {
+                y = y.saturating_sub(1);
+            }
+            Direction::Down => {
+                y = y.saturating_add(1);
+            }
+            Direction::Left => {
+                x = x.saturating_sub(1);
+            }
+            Direction::Right => {
+                x = x.saturating_add(1);
+            }
+            Direction::PageUp => {
+                y = 0;
+            }
+            Direction::PageDown => {
+                y = height.saturating_sub(1);
+            }
+            Direction::Home => {
+                x = 0;
+            }
+            Direction::End => {
+                x = width.saturating_sub(1);
+            }
+        }
+        self.location = Location { x, y };
+        self.scroll_location_into_view();
+    }
+
+    fn scroll_location_into_view(&mut self) {
+        let Location { x, y } = self.location;
+        let Size { width, height } = self.size;
+        let mut offset_changed = false;
+
+        if y < self.scroll_offset.y {
+            self.scroll_offset.y = y;
+            offset_changed = true;
+        } else if y >= self.scroll_offset.y.saturating_add(height) {
+            self.scroll_offset.y = y.saturating_sub(height).saturating_add(1);
+            offset_changed = true;
+        }
+
+        if x < self.scroll_offset.x {
+            self.scroll_offset.x = x;
+            offset_changed = true;
+        } else if x >= self.scroll_offset.x.saturating_add(width) {
+            self.scroll_offset.x = x.saturating_sub(width).saturating_add(1);
+            offset_changed = true;
+        }
+
+        self.needs_redraw = offset_changed;
+    }
+
+    fn resize(&mut self, to: Size) {
+        self.size = to;
+        self.needs_redraw = true;
+    }
+
+    fn render_line(at: usize, line_text: &str) {
+        let result = Terminal::print_row(at, line_text);
+        debug_assert!(result.is_ok(), "Failed to render line");
     }
 
     fn build_welcome_message(width: usize) -> String {
@@ -85,84 +155,6 @@ impl View {
         let padding = (width.saturating_sub(len).saturating_sub(1)) / 2;
         let full_message = format!("~{}{}", " ".repeat(padding), welcome_message);
         full_message
-    }
-
-    pub fn load(&mut self, file_name: &str) {
-        if let Ok(buffer) = Buffer::load(file_name) {
-            self.buffer = buffer;
-            self.needs_redraw = true;
-        }
-    }
-
-    pub fn move_point(&mut self, key_code: KeyCode) {
-        let Location { mut x, mut y } = self.location;
-        let Location { x: mut scroll_x, y: mut scroll_y } = self.scroll_offset;
-        let Size { height, width } = Terminal::size().unwrap_or_default();
-
-        match key_code {
-            KeyCode::Up => {
-                if self.location.y == 0 && self.scroll_offset.y != 0 {
-                    scroll_y = scroll_y.saturating_sub(1);
-                }
-                y = y.saturating_sub(1);
-            }
-            KeyCode::Down => {
-                // You move down the page when you are at the edge of the screen
-                if self.location.y == height.saturating_sub(1) && self.scroll_offset.y != self.buffer.lines.len() {
-                    scroll_y = scroll_y.saturating_add(1);
-                }
-                y = min(height.saturating_sub(1), y.saturating_add(1));
-            }
-            KeyCode::Left => {
-                if self.location.x == 0 && self.scroll_offset.y != 0 {
-                    scroll_x = scroll_x.saturating_sub(1);
-                }
-                x = x.saturating_sub(1);
-            }
-            KeyCode::Right => {
-                if self.location.x == width.saturating_sub(1) && self.scroll_offset.y != self.buffer.longest() {
-                    scroll_x = scroll_x.saturating_add(1);
-                }
-                x = min(width.saturating_sub(1), x.saturating_add(1));
-            }
-            KeyCode::PageUp => {
-                y = 0;
-                scroll_y = 0;
-            }
-            KeyCode::PageDown => {
-                y = self.buffer.lines.len();
-                if y >= height.saturating_sub(1) {
-                    y = height.saturating_sub(1); 
-                    scroll_y = self.buffer.lines.len() - height;
-                }
-            }
-            KeyCode::Home => {
-                x = 0;
-                scroll_x = 0;
-            }
-            KeyCode::End => {
-                if let Some(line) = self.buffer.lines.get(y + scroll_y) {
-                    x = line.len();
-                    if x >= width.saturating_sub(1) {
-                        scroll_x = x - width;
-                    }
-                }
-            }
-            _ => (),
-        }
-        self.location = Location { x, y };
-        self.scroll_offset = Location { x: scroll_x, y: scroll_y };
-        self.needs_redraw = true;
-    }
-
-    fn resize(&mut self, to: Size) {
-        self.size = to;
-        self.needs_redraw = true;
-    }
-
-    fn render_line(at: usize, line_text: &str) {
-        let result = Terminal::print_row(at, line_text);
-        debug_assert!(result.is_ok(), "Failed to render line");
     }
 }
 

@@ -61,7 +61,7 @@ impl Editor {
             Event::Key(KeyEvent {kind, .. }) => kind == &KeyEventKind::Press,
             Event::Resize::Resize(_, _) => true,
             _ => false,
-        }
+        };
         
         if should_process {
             match EditorCommand::try_from(event) {
