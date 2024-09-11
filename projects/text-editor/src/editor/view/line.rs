@@ -17,7 +17,7 @@ impl Line {
         self.string.get(start..end).unwrap_or_default().to_string()
     }
 
-    pub fn lenght(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.string.len()
     }
 }

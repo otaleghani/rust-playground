@@ -23,24 +23,14 @@ impl Buffer {
         }
         false
     }
-
+    
     // pub fn longest(&self) -> usize {
-    //     let mut longest = 0;
-    //     for value in &self.lines {
-    //         if value.string.len() > longest {
-    //             longest = value.string.len();
+    //     let mut max = 0;
+    //     for line in &self.lines {
+    //         if line.lenght() > max {
+    //             max = line.lenght();
     //         }
     //     }
-    //     longest
+    //     max
     // }
 }
-
-// impl Default for Buffer {
-//     fn default() -> Self {
-//         Self {
-//             //lines: vec!["hello world".to_string()]
-//             lines: vec![]
-//         }
-//     }
-// }
-
