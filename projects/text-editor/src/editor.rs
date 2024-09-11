@@ -6,9 +6,9 @@ use std::{
 };
 mod terminal;
 mod view;
+mod editorcommand;
 use terminal::Terminal;
 use view::View;
-
 use editorcommand::EditorCommand;
 
 #[derive(Default)]
@@ -59,29 +59,30 @@ impl Editor {
     fn evaluate_event(&mut self, event: Event) {
         let should_process = match &event {
             Event::Key(KeyEvent {kind, .. }) => kind == &KeyEventKind::Press,
-            Event::Resize::Resize(_, _) => true,
+            Event::Resize(_, _) => true,
             _ => false,
         };
         
         if should_process {
             match EditorCommand::try_from(event) {
                 Ok(command) => {
-                    if matches!(commad, EditorCommand::Quit) {
+                    if matches!(command, EditorCommand::Quit) {
                         self.should_quit = true;
                     } else {
                         self.view.handle_command(command);
                     }
                 }
-                Err(err) => {
+                Err(_) => {
                     #[cfg(debug_assertions)]
                     {
-                        panic!("Could not handle command: {err}");
+                        // panic!("Could not handle command: {err}");
                     }
                 }
             }
         } else {
             #[cfg(debug_assertions)]
             {
+                // This crashes everytime that there is a non recognized keypress
                 panic!("Received and discarted unsupported or non-press event.");
             }
         }

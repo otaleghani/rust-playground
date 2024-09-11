@@ -1,7 +1,7 @@
 use std::{cmp, ops::Range};
 
 pub struct Line {
-    string: String;
+    string: String,
 }
 
 impl Line {
@@ -15,5 +15,9 @@ impl Line {
         let start = range.start;
         let end = cmp::min(range.end, self.string.len());
         self.string.get(start..end).unwrap_or_default().to_string()
+    }
+
+    pub fn lenght(&self) -> usize {
+        self.string.len()
     }
 }

@@ -24,15 +24,15 @@ impl Buffer {
         false
     }
 
-    pub fn longest(&self) -> usize {
-        let mut longest = 0;
-        for value in &self.lines {
-            if value.len() > longest {
-                longest = value.len();
-            }
-        }
-        longest
-    }
+    // pub fn longest(&self) -> usize {
+    //     let mut longest = 0;
+    //     for value in &self.lines {
+    //         if value.string.len() > longest {
+    //             longest = value.string.len();
+    //         }
+    //     }
+    //     longest
+    // }
 }
 
 // impl Default for Buffer {

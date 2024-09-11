@@ -11,11 +11,11 @@ mod line;
 const NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[derive(Copy, Clone, Default)]
-struct Location {
-    x: usize,
-    y: usize,
-}
+// #[derive(Copy, Clone, Default)]
+// struct Location {
+//     x: usize,
+//     y: usize,
+// }
 
 pub struct View {
     buffer: Buffer,
@@ -100,7 +100,10 @@ impl View {
                 x = 0;
             }
             Direction::End => {
-                x = width.saturating_sub(1);
+                // x = width.saturating_sub(1);
+                if let Some(line) = self.buffer.lines.get(y) {
+                    x = line.lenght(;
+                }
             }
         }
         self.location = Location { x, y };
