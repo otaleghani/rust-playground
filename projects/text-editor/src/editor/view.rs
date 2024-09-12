@@ -1,7 +1,5 @@
 use std::cmp::min;
-
 use self::line::Line;
-
 use super::{
     editorcommand::{Direction, EditorCommand},
     terminal::{Position, Size, Terminal},
@@ -25,10 +23,13 @@ pub struct View {
 }
 
 impl View {
+    fn write_char(&mut self, )
+
     pub fn handle_command(&mut self, command: EditorCommand) {
         match command {
             EditorCommand::Resize(size) => self.resize(size),
             EditorCommand::Move(direction) => self.move_text_location(&direction),
+            EditorCommand::Write(char) => self.write_char(char),
             EditorCommand::Quit => {}
         }
     }

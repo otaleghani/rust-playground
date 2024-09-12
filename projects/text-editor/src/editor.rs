@@ -46,7 +46,7 @@ impl Editor {
                 Err(err) => {
                     #[cfg(debug_assertions)]
                     {
-                        panic!("Could not read event: {err:?}");
+                        //panic!("Could not read event: {err:?}");
                     }
                 }
             }
@@ -76,7 +76,7 @@ impl Editor {
                 Err(err) => {
                     #[cfg(debug_assertions)]
                     {
-                        panic!("Could not handle command: {err}");
+                        //panic!("Could not handle command: {err}");
                     }
                 }
             }
