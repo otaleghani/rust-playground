@@ -23,6 +23,10 @@ impl Buffer {
         }
         false
     }
+
+    pub fn height(&self) -> usize {
+        self.lines.len()
+    }
     
     // pub fn longest(&self) -> usize {
     //     let mut max = 0;

@@ -1,17 +1,17 @@
 use crossterm::event::{read, Event, KeyEvent, KeyEventKind};
 use std::{
-    env, 
+    env,
     io::Error,
     panic::{set_hook, take_hook},
 };
+mod editorcommand;
 mod terminal;
 mod view;
-mod editorcommand;
 use terminal::Terminal;
 use view::View;
+
 use editorcommand::EditorCommand;
 
-#[derive(Default)]
 pub struct Editor {
     should_quit: bool,
     view: View,
@@ -22,7 +22,7 @@ impl Editor {
         let current_hook = take_hook();
         set_hook(Box::new(move |panic_info| {
             let _ = Terminal::terminate();
-            current_hook(panic_info)
+            current_hook(panic_info);
         }));
         Terminal::initialize()?;
         let mut view = View::default();
@@ -35,8 +35,6 @@ impl Editor {
             view,
         })
     }
-
-
     pub fn run(&mut self) {
         loop {
             self.refresh_screen();
@@ -55,14 +53,17 @@ impl Editor {
         }
     }
 
+    // needless_pass_by_value: Event is not huge, so there is not a
+    // performance overhead in passing by value, and pattern matching in this
+    // function would be needlessly complicated if we pass by reference here.
     #[allow(clippy::needless_pass_by_value)]
     fn evaluate_event(&mut self, event: Event) {
         let should_process = match &event {
-            Event::Key(KeyEvent {kind, .. }) => kind == &KeyEventKind::Press,
+            Event::Key(KeyEvent { kind, .. }) => kind == &KeyEventKind::Press,
             Event::Resize(_, _) => true,
             _ => false,
         };
-        
+
         if should_process {
             match EditorCommand::try_from(event) {
                 Ok(command) => {
@@ -72,26 +73,19 @@ impl Editor {
                         self.view.handle_command(command);
                     }
                 }
-                Err(_) => {
+                Err(err) => {
                     #[cfg(debug_assertions)]
                     {
-                        // panic!("Could not handle command: {err}");
+                        panic!("Could not handle command: {err}");
                     }
                 }
             }
-        } else {
-            #[cfg(debug_assertions)]
-            {
-                // This crashes everytime that there is a non recognized keypress
-                panic!("Received and discarted unsupported or non-press event.");
-            }
-        }
+        } 
     }
-
     fn refresh_screen(&mut self) {
         let _ = Terminal::hide_caret();
         self.view.render();
-        let _ = Terminal::move_caret_to(self.view.get_position());
+        let _ = Terminal::move_caret_to(self.view.caret_position());
         let _ = Terminal::show_caret();
         let _ = Terminal::execute();
     }
@@ -101,7 +95,7 @@ impl Drop for Editor {
     fn drop(&mut self) {
         let _ = Terminal::terminate();
         if self.should_quit {
-            let _ = Terminal::print("Goodbye\r\n");
+            let _ = Terminal::print("Goodbye.\r\n");
         }
     }
 }
