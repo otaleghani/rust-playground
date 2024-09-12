@@ -2,13 +2,36 @@ use std::{cmp, ops::Range};
 use unicode_segmentation::UnicodeSegmentation;
 
 pub struct Line {
-    string: String,
+    // string: String,
+    string: TextFragment,
+}
+
+enum GraphemeWidth {
+    Half,
+    Full
+}
+
+#[derive(Debug)]
+struct TextFragment {
+    grapheme: String,
+    rendered_width: GraphemeWidth,
+    replacement: Option<char>
 }
 
 impl Line {
     pub fn from(line_str: &str) -> Self {
+        // Self {
+        //     string: String::from(line_str),
+        // }
+
+        // TODO: check if grapheme could be rendered
+        let replacement = Some('.');
         Self {
-            string: String::from(line_str),
+            string: {
+                grapheme: String::from(line_str),
+                rendered_width: 0, // Width with unicode-width crate
+                replacement: Some('.'),
+            }
         }
     }
 
