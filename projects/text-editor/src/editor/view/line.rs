@@ -1,11 +1,13 @@
 use std::{cmp, ops::Range};
 use unicode_segmentation::UnicodeSegmentation;
+use unicode_width::UnicodeWidthStr;
 
 pub struct Line {
     // string: String,
-    string: TextFragment,
+    string: Vec<TextFragment>,
 }
 
+#[derive(Debug)]
 enum GraphemeWidth {
     Half,
     Full
@@ -25,13 +27,30 @@ impl Line {
         // }
 
         // TODO: check if grapheme could be rendered
-        let replacement = Some('.');
+        
+        let mut result: Vec<TextFragment> = Vec::new();
+        for grapheme in line_str.graphemes(true) {
+            let width = grapheme.width();
+            let mut replacement: Option<char> = Some('.');
+            let rendered_width: GraphemeWidth;
+            match width {
+                0 => {
+                    replacement = None;
+                    rendered_width = GraphemeWidth::Half;
+                }
+                1 => rendered_width = GraphemeWidth::Half,
+                2 => rendered_width = GraphemeWidth::Full,
+                _ => rendered_width = GraphemeWidth::Full,
+            };
+            result.push(TextFragment {
+                grapheme: grapheme.to_string(),
+                replacement,
+                rendered_width,
+            });
+        }
+
         Self {
-            string: {
-                grapheme: String::from(line_str),
-                rendered_width: 0, // Width with unicode-width crate
-                replacement: Some('.'),
-            }
+            string: result,
         }
     }
 
@@ -40,11 +59,12 @@ impl Line {
         let start = range.start;
         let end = cmp::min(range.end, self.len());
 
-        self.string
-            .graphemes(true)
-            .skip(start)
-            .take(end.saturating_sub(start))
-            .collect()
+        // self.string
+        //     .graphemes(true)
+        //     .skip(start)
+        //     .take(end.saturating_sub(start))
+        //     .collect()
+        self.string[start..end]
     }
 
     pub fn len(&self) -> usize {
