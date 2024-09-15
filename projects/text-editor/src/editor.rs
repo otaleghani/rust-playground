@@ -43,7 +43,7 @@ impl Editor {
             }
             match read() {
                 Ok(event) => self.evaluate_event(event),
-                Err(err) => {
+                Err(_err) => {
                     #[cfg(debug_assertions)]
                     {
                         //panic!("Could not read event: {err:?}");
@@ -73,7 +73,7 @@ impl Editor {
                         self.view.handle_command(command);
                     }
                 }
-                Err(err) => {
+                Err(_err) => {
                     #[cfg(debug_assertions)]
                     {
                         //panic!("Could not handle command: {err}");

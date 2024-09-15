@@ -3,7 +3,7 @@ use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum GraphemeWidth {
     Half,
     Full,
@@ -18,17 +18,35 @@ impl GraphemeWidth {
     }
 }
 
+#[derive(Debug)]
 struct TextFragment {
     grapheme: String,
     rendered_width: GraphemeWidth,
     replacement: Option<char>,
 }
 
+#[derive(Debug)]
 pub struct Line {
     fragments: Vec<TextFragment>,
 }
 
 impl Line {
+    pub fn add_char(&mut self, c: char, pos: usize) {
+        let rendered_width = match c.to_string().width() {
+            0 | 1 => GraphemeWidth::Half,
+            _ => GraphemeWidth::Full,
+        };
+        self.fragments.insert(
+            pos,
+            TextFragment {
+                grapheme: c.to_string(),
+                rendered_width,
+                replacement: Self::replacement_character(&c.to_string()),
+            },
+            
+        );
+    }
+
     pub fn from(line_str: &str) -> Self {
         let fragments = line_str
             .graphemes(true)

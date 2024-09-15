@@ -23,7 +23,13 @@ pub struct View {
 }
 
 impl View {
-    fn write_char(&mut self, )
+    fn write_char(&mut self, c: char) {
+        if let Some(line) = self.buffer.lines.get_mut(self.text_location.line_index) {
+            line.add_char(c, self.text_location.grapheme_index);
+            self.text_location.grapheme_index += 1;
+            self.needs_redraw = true;
+        }
+    }
 
     pub fn handle_command(&mut self, command: EditorCommand) {
         match command {
