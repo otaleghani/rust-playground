@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title></title>
+    <link href="css/style.css" rel="stylesheet">
+  </head>
+  <body>
+    <script type="module">
+      import init, { greet, fetch_data } from "./pkg/wasm_testing.js";
+        await init();
+      async function run() {
+        await init();
+        window.greet = greet;
+        //window.fetch_data = fetch_data;
+
+        window.fetchAndDisplay = async () => {
+          try {
+              const data = await fetch_data('https://catfact.ninja/fact');
+              document.getElementById('sus').innerText = JSON.stringify(data, null, 2);
+          } catch (err) {
+              console.error('Error fetching data:', err);
+          }
+        };
+      }
+      run();
+    </script>
+    <div id="sus"></div>
+    <button type="button" onclick="greet('helo')">helo</button>
+    <button type="button" onclick="fetchAndDisplay()">fetch cat fact!</button>
+  </body>
+</html>
