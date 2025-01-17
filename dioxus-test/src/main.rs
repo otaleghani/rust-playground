@@ -61,7 +61,6 @@ async fn get_data() -> Result<String, ServerFnError> {
     Ok(String::from("sus"))
 }
 
-
 //async fn launch(config: ServeConfig, app: fn() -> Element) {
 //    let router = axum::Router::new().serve_dioxus_application(config, app);
 //
