@@ -32,6 +32,8 @@ fn App() -> impl IntoView {
         <components::ProgressOld count=count />
         <components::StaticList length=5 />
         <components::DynamicList initial_length=5 />
+        <components::ControlledInput />
+        <components::Textarea />
     }
 }
 
