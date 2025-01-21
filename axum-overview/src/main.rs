@@ -3,29 +3,41 @@
 use std::net::SocketAddr;
 
 use axum::extract::{Path, Query};
-use axum::response::{Html, IntoResponse};
-//use axum::response::Extension
+use axum::response::{Html, IntoResponse, Response};
 use axum::routing::{get, get_service};
-use axum::{Router, ServiceExt};
+use axum::{middleware, Router, ServiceExt};
+use model::ModelController;
 use serde::Deserialize;
+use tower_cookies::CookieManagerLayer;
 use tower_http::services::ServeDir;
 
 mod error;
+mod model;
 mod web;
 pub use self::error::{Error, Result};
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
+    let mc = ModelController::new().await?;
+
+    let routes_apis = web::routes_tickets::routes(mc.clone())
+        .route_layer(middleware::from_fn(web::mw_auth::mw_require_auth));
+
     let routes_all = Router::new()
         .merge(routes_hello())
         .merge(routes_other())
         .merge(web::routes_login::routes())
+        .nest("/api", routes_apis)
+        .layer(middleware::map_response(main_response_mapper))
+        .layer(CookieManagerLayer::new())
         .fallback_service(routes_static());
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     println!("Listening on addr\n");
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, routes_all.into_make_service()).await;
+
+    Ok(())
 }
 
 fn routes_hello() -> Router {
@@ -63,4 +75,10 @@ async fn handler_path(Path(name): Path<String>) -> impl IntoResponse {
     println!("{:<12} - handler_path", "HANDLER");
 
     Html(format!("<h1>Hello {name}"))
+}
+
+async fn main_response_mapper(res: Response) -> Response {
+    println!("{:<12} - main_response_mapper", "RES_MAPPER");
+    println!();
+    res
 }

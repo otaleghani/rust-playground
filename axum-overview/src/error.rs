@@ -5,6 +5,13 @@ pub type Result<T> = core::result::Result<T, Error>;
 #[derive(Debug)]
 pub enum Error {
     LoginFail,
+
+    // -- Auth errors
+    AuthFailNoAuthTokenCookie,
+    AuthFailTokenWrongFormat,
+
+    // -- Model errors
+    TicketDeleteFailIdNotFound { id: u64 },
 }
 
 impl std::fmt::Display for Error {
