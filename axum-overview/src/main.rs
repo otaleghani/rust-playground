@@ -97,6 +97,7 @@ async fn main_response_mapper(
     req_method: Method,
     res: Response,
 ) -> Response {
+    println!("main_response_mapper");
     let uuid = uuid::Uuid::new_v4();
     let service_error = res.extensions().get::<Error>();
     let client_status_error = service_error.map(|se| se.client_status_and_error());
