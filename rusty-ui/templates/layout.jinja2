@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    {% block head %}
+    <link rel="stylesheet" href="style.css" />
+    <title>{% block title %}{% endblock title %} - Sus inc</title>
+    {% endblock head %}
+    <style>
+      #content {
+        background-color: #000000;
+        color: #ffffff;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="content">{% block content %}{% endblock content %}</div>
+    <div id="footer">
+      {% block footer %}
+      &copy; Copyright 2008
+      {% endblock footer %}
+    </div>
+  </body>
+</html>

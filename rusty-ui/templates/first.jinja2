@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>My first JINJA template</title>
+    {# comment #}
+  </head>
+  <body>
+    <h1>helo, {{ user.name }}</h1>
+    <ul id="navigation">  
+      {% for item in navigation %}
+        <li><a href="/">{{ item.caption }}</a></li>
+      {% endfor %}
+    </ul>
+    {% if user.name == "Sandro" %}
+      <p>Maestro, prego da questa parte</p>
+    {% else %}
+      <p>Non vengo pagato abbastanza per essere gentile</p>
+    {% endif %}
+
+    {% if user.favourite_breed.id == "0" %}
+      <p>ah, I see, you are a man of culture as well</p>
+    {% else %}
+      <p>We are not the same</p>
+    {% endif %}
+
+    <p>{{ user.name|scream }}</p>
+    <p>{{ user.name is is_sandro }}</p>
+
+    {{ '{{' }}
+
+    {% raw %}
+      {% else %}
+        <p>We are not the same</p>
+      {% endif %}
+    {% endraw %}
+
+    {% with label = "Anvedi nando" %}
+      {% include "components/button.jinja" %}
+    {% endwith %}
+
+    {% with label="gennaro", link="sus"%}
+      {% include "components/link.jinja" %}
+    {% endwith %}
+    
+  </body>
+</html>
