@@ -15,3 +15,6 @@ Cargo.lock
 
 .so
 .o
+
+node_modules/
+rusty-ui/node_modules
