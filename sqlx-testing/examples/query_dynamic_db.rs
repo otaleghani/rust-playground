@@ -1,8 +1,10 @@
 use core::panic;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Number, Value};
+use sqlx::sqlite::SqliteRow;
 use sqlx::{Column, Pool, Row, Sqlite, SqlitePool, TypeInfo, ValueRef};
 use std::collections::HashMap;
+use std::str;
 use std::sync::{Arc, RwLock};
 
 static MASTER: &str = "master.db";
@@ -57,12 +59,46 @@ async fn main() {
     // get_structure(first, state.clone(), table).await.unwrap();
     let json_data = r#"
         {
-            "id": 1,
-            "name": "testing"
+            "id": 2,
+            "name": "The new row"
         }
     "#;
 
     add_to_table(first, state.clone(), table, json_data)
+        .await
+        .unwrap();
+
+    delete_from_row(first, state.clone(), table, "2")
+        .await
+        .unwrap();
+
+    let update_json_data = r#"
+        {
+            "name": "The old hunter"
+        }
+    "#;
+
+    update_from_row(first, state.clone(), table, update_json_data, "1")
+        .await
+        .unwrap();
+
+    let table_two = "tableTwo";
+    let json_data_two = r#"
+        {
+            "items": [
+                { "type": "Number", "name": "id" },
+                { "type": "String", "name": "name" }
+            ]
+        }
+    "#;
+    add_table(first, state.clone(), table_two, json_data_two)
+        .await
+        .unwrap();
+
+    create_foreign_key(first, state.clone(), table, table_two)
+        .await
+        .unwrap();
+    visualize_references(first, state.clone(), table)
         .await
         .unwrap();
 }
@@ -292,3 +328,267 @@ async fn get_structure(
 
     Ok(rows)
 }
+
+// Delete row
+async fn delete_from_row(
+    database_name: &str,
+    state: State,
+    table_name: &str,
+    id: &str,
+) -> Result<(), sqlx::Error> {
+    // It should return a specific error like "NOT_FOUND" or "UNABLE_"
+    // Get the pool
+    let pool = find_database(database_name, state.clone()).unwrap();
+
+    let query = format!("DELETE FROM {} WHERE id = '{}'", table_name, id);
+
+    sqlx::query(&query).execute(&pool).await?;
+
+    Ok(())
+}
+
+// Update row
+async fn update_from_row(
+    database_name: &str,
+    state: State,
+    table_name: &str,
+    content: &str,
+    id: &str,
+) -> Result<(), sqlx::Error> {
+    // Get the pool
+    let pool = find_database(database_name, state.clone()).unwrap();
+
+    // Validation is needed
+    // Get the structure of the table that you want to add to
+    let structure = get_structure(database_name, state.clone(), table_name).await?;
+
+    let mut json_value: Value = serde_json::from_str(content).unwrap();
+    let json_map = json_value.as_object_mut().unwrap();
+
+    let mut sql_values = Vec::new();
+    for (idx, val) in json_map {
+        // Create the query
+        sql_values.push(format!("{} = {}", idx, val));
+        if !structure.contains_key(idx) {
+            panic!("the key {} does not exist", idx);
+        }
+    }
+
+    let sql_query = sql_values.join(", ");
+
+    let query = format!(
+        "UPDATE {} SET {} WHERE id = '{}'",
+        table_name, sql_query, id
+    );
+
+    sqlx::query(&query).execute(&pool).await?;
+    Ok(())
+}
+
+// TODO: Bulk update?
+
+// Create Foreign keys
+// The idea is to make a connection from two tables by creating a third table that store the connected ids.7
+// By doing something like this you add a bit of overhead but you make one to one, one to many and many to many possible in one way
+// One to one -> Check if the two id exists, if no create connection, else do not create connection
+// One to many -> Check if one of two exist,
+async fn create_foreign_key(
+    database_name: &str,
+    state: State,
+    table_name: &str,
+    other_table_name: &str,
+) -> Result<(), sqlx::Error> {
+    // Get the pool
+    let pool = find_database(database_name, state.clone()).unwrap();
+
+    // Remember to activate the foreign keys
+    let activate_query = "PRAGMA foreign_keys = ON";
+    sqlx::query(&activate_query).execute(&pool).await?;
+
+    // Connect the different ids
+    let query = format!(
+        "
+            CREATE TABLE IF NOT EXISTS {0}_{1} (
+                {0}_id TEXT NOT NULL,
+                {1}_id TEXT NOT NULL,
+                FOREIGN KEY ({0}_id) REFERENCES {0}(id) ON DELETE CASCADE,
+                FOREIGN KEY ({1}_id) REFERENCES {1}(id) ON DELETE CASCADE,
+                PRIMARY KEY ({0}_id, {1}_id)
+            )
+        ",
+        table_name, other_table_name
+    );
+
+    sqlx::query(&query).execute(&pool).await?;
+    Ok(())
+}
+
+#[derive(sqlx::FromRow)]
+struct Reference {
+    name: String,
+}
+
+// Visualize the different foreign keys of a given table
+async fn visualize_references(
+    database_name: &str,
+    state: State,
+    table_name: &str,
+) -> Result<(), sqlx::Error> {
+    // Get the pool
+    let pool = find_database(database_name, state.clone()).unwrap();
+
+    // Gets the name of all the references table
+    let query = format!(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '{}_%'",
+        table_name
+    );
+    let result: Vec<Reference> = sqlx::query_as(&query).fetch_all(&pool).await?;
+
+    // let
+    for val in result {
+        println!("||> {:<12} {}", "FOREIGN KEY", val.name);
+    }
+
+    Ok(())
+}
+
+// Create a connection between two records
+async fn create_reference(
+    database_name: &str,
+    state: State,
+    table_name: &str,
+    id: &str,
+    other_table_name: &str,
+    other_id: &str,
+) -> Result<(), sqlx::Error> {
+    // Get the pool
+    let pool = find_database(database_name, state.clone()).unwrap();
+
+    let query = format!(
+        "INSERT OR IGNORE INTO {0}_{1} ({0}_id, {1}_id) VALUES ({2}, {3})",
+        table_name, other_table_name, id, other_id
+    );
+    sqlx::query(&query).execute(&pool).await?;
+    Ok(())
+}
+
+// Delete a conection between two records
+async fn delete_reference(
+    database_name: &str,
+    state: State,
+    table_name: &str,
+    id: &str,
+    other_table_name: &str,
+    other_id: &str,
+) -> Result<(), sqlx::Error> {
+    // Get the pool
+    let pool = find_database(database_name, state.clone()).unwrap();
+
+    // let query = format!("DELETE FROM {} WHERE id = '{}'", table_name, id);
+    let query = format!(
+        "DELETE FROM {0}_{1} WHERE {0}_id = '{2}' AND {1}_id = '{3}'",
+        table_name, other_table_name, id, other_id
+    );
+
+    sqlx::query(&query).execute(&pool).await?;
+    Ok(())
+}
+
+#[derive(sqlx::FromRow)]
+struct ForeignId {
+    id: String,
+}
+
+// Given an item id of a given table, return all the different refereces
+async fn get_references(
+    database_name: &str,
+    state: State,
+    table_name: &str,
+    id: &str,
+) -> Result<(), sqlx::Error> {
+    // Get the pool
+    let pool = find_database(database_name, state.clone()).unwrap();
+
+    // Gets the name of all the references table
+    let query = format!(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '{}_%'",
+        table_name
+    );
+    let result: Vec<Reference> = sqlx::query_as(&query).fetch_all(&pool).await?;
+
+    for val in result {
+        // Select in the foreign key table the one that have the id
+        let (_, other_table) = val.name.split_once("_").unwrap();
+        let select_foreign = format!(
+            "SELECT {0}_id AS id FROM {1} WHERE {2}_id = '{3}'",
+            other_table, val.name, table_name, id
+        );
+
+        // YOU WERE HERE -> You need to return all the different references of one item from a given table name
+        let select_foreign_items = format!("SELECT * FROM {0} WHERE id = ");
+
+        // We want to execute this thing, but then we enter the RAW data world
+        // because we do not know what this table looks like.
+
+        let result = sqlx::query(&select_foreign).fetch_all(&pool).await?;
+
+        let json = convert_to_json(result);
+        println!("||> {:<12} {}", "FOREIGN DATA CONNECTION", json);
+    }
+
+    Ok(())
+}
+
+// From a SqliteRow return a serde_json object!
+fn convert_to_json(rows: Vec<SqliteRow>) -> Value {
+    let mut json_rows = Vec::with_capacity(rows.len());
+
+    // Iterate over each row.
+    for row in rows {
+        let mut object = serde_json::Map::new();
+
+        // For each column in the row...
+        for col in row.columns() {
+            let col_name = col.name();
+            let json_value = {
+                // First, try to extract the value as an i64.
+                if let Ok(Some(i)) = row.try_get::<Option<i64>, _>(col_name) {
+                    Value::Number(Number::from(i))
+                }
+                // If that fails, try as f64.
+                else if let Ok(Some(f)) = row.try_get::<Option<f64>, _>(col_name) {
+                    if let Some(num) = Number::from_f64(f) {
+                        Value::Number(num)
+                    } else {
+                        Value::Null
+                    }
+                }
+                // Next, try as a String.
+                else if let Ok(Some(s)) = row.try_get::<Option<String>, _>(col_name) {
+                    Value::String(s)
+                }
+                // Otherwise, use JSON Null.
+                else {
+                    Value::Null
+                }
+            };
+
+            object.insert(col_name.to_string(), json_value);
+        }
+
+        json_rows.push(Value::Object(object));
+    }
+
+    Value::Array(json_rows)
+}
+
+// TODO: Create connection between two records
+// async fn create_reference(database_name: &str, state: State, table_name: &str) {}
+//
+
+// TODO: Get foreign key connection -> given one table, return all of the present connections
+
+// TODO: Drop foreign key (delete the connection)
+
+// TODO: Error column -> The idea here is that whenever you change the metadata you'll also need to handle the validation of every affected column
+// TODO: Metedata management ( Read, Write, Update metadata column ) -> Remember metadata is TEXT "database.table.column" that binds another TEXT which is the JSON
