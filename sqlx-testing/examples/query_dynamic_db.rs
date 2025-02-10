@@ -32,6 +32,13 @@ async fn main() {
         projects: Arc::new(RwLock::new(HashMap::new())),
     };
 
+    // Remember to activate the foreign keys
+    let activate_query = "PRAGMA foreign_keys = ON";
+    sqlx::query(&activate_query)
+        .execute(&state.clone().master)
+        .await
+        .unwrap();
+
     let first = "first.db";
     create_database(first, state.clone())
         .await
@@ -56,7 +63,6 @@ async fn main() {
         .await
         .unwrap();
 
-    // get_structure(first, state.clone(), table).await.unwrap();
     let json_data = r#"
         {
             "id": 2,
@@ -91,14 +97,49 @@ async fn main() {
             ]
         }
     "#;
+
     add_table(first, state.clone(), table_two, json_data_two)
         .await
         .unwrap();
 
+    let content_tb_two = r#"
+        {
+            "id": 0,
+            "name": "Anvendi NANDO"
+        }  
+    "#;
+    // let json_data = r#"
+    //     {
+    //         "id": 2,
+    //         "name": "The new row"
+    //     }
+    // "#;
+
+    add_to_table(first, state.clone(), table_two, &content_tb_two)
+        .await
+        .unwrap_or_else(|err| println!("Got this error: {:?}", err));
+    println!("Added into tb 2");
+
     create_foreign_key(first, state.clone(), table, table_two)
         .await
         .unwrap();
+
+    let content_foreign = r#"
+        {
+            "tableOne_id": 0,
+            "tableTwo_id": 0
+        }
+    "#;
+    // TODO: Specific function that connects two id in a foreign table
+    add_to_table(first, state.clone(), "tableOne_tableTwo", &content_foreign)
+        .await
+        .unwrap_or_else(|err| println!("Got this error: {:?}", err));
+
     visualize_references(first, state.clone(), table)
+        .await
+        .unwrap();
+
+    get_references(first, state.clone(), table, 0)
         .await
         .unwrap();
 }
@@ -150,6 +191,13 @@ async fn create_master_database() -> Result<Pool<Sqlite>, sqlx::Error> {
     // Opens the connection
     let pool = SqlitePool::connect(MASTER).await?;
 
+    let query = "
+    CREATE TABLE IF NOT EXISTS databases (
+        id TEXT PRIMARY KEY,
+        path TEXT NOT NULL)
+    ";
+    sqlx::query(query).execute(&pool).await?;
+
     Ok(pool)
 }
 
@@ -198,6 +246,9 @@ enum AcceptedTypes {
 async fn validate_fields(json: &str) -> Result<Vec<ColumnStructure>, Error> {
     let value: Value = serde_json::from_str(json).unwrap();
     let items: Vec<ColumnStructure> = serde_json::from_value(value["items"].clone()).unwrap();
+    for i in &items {
+        println!("THE VALIDATED STRUCT: {:?}", i.r#type);
+    }
     Ok(items)
 }
 
@@ -218,6 +269,11 @@ async fn add_table(
             AcceptedTypes::Number => query = format!("{} {} INTEGER", query, field.name),
             AcceptedTypes::String => query = format!("{} {} TEXT", query, field.name),
             _ => {}
+        }
+
+        // The first it should alwayt be the primary key
+        if index == 0 {
+            query = format!("{} PRIMARY KEY", query);
         }
 
         if index != parsed_fields.len() - 1 {
@@ -250,6 +306,7 @@ async fn add_to_table(
     let mut value: Value = serde_json::from_str(content).unwrap();
     let val = value.as_object_mut().unwrap();
     // let valuess = val.take();
+    println!("The struct:  {:?}", structure);
 
     // Validate the data with the given structure
     let mut keys = String::new();
@@ -266,9 +323,11 @@ async fn add_to_table(
             values = String::from(format!("{}, {}", values, val.take()));
         }
         if !structure.contains_key(idx) {
+            println!("{:?}", structure);
             panic!("the key {} does not exist", idx);
         }
     }
+
     let query = format!("INSERT INTO {} ({}) VALUES ({})", table_name, keys, values);
 
     // Execute the query
@@ -324,7 +383,7 @@ async fn get_structure(
         }
     }
 
-    println!("{:?}", rows);
+    println!("{:<50?} STRUCTURE OF {}", rows, table_name);
 
     Ok(rows)
 }
@@ -340,7 +399,8 @@ async fn delete_from_row(
     // Get the pool
     let pool = find_database(database_name, state.clone()).unwrap();
 
-    let query = format!("DELETE FROM {} WHERE id = '{}'", table_name, id);
+    let query = format!("DELETE FROM {} WHERE id = {}", table_name, id);
+    println!("THE DELETE QUERY: {}", query);
 
     sqlx::query(&query).execute(&pool).await?;
 
@@ -401,16 +461,12 @@ async fn create_foreign_key(
     // Get the pool
     let pool = find_database(database_name, state.clone()).unwrap();
 
-    // Remember to activate the foreign keys
-    let activate_query = "PRAGMA foreign_keys = ON";
-    sqlx::query(&activate_query).execute(&pool).await?;
-
     // Connect the different ids
     let query = format!(
         "
             CREATE TABLE IF NOT EXISTS {0}_{1} (
-                {0}_id TEXT NOT NULL,
-                {1}_id TEXT NOT NULL,
+                {0}_id NUMBER NOT NULL,
+                {1}_id NUMBER NOT NULL,
                 FOREIGN KEY ({0}_id) REFERENCES {0}(id) ON DELETE CASCADE,
                 FOREIGN KEY ({1}_id) REFERENCES {1}(id) ON DELETE CASCADE,
                 PRIMARY KEY ({0}_id, {1}_id)
@@ -494,46 +550,74 @@ async fn delete_reference(
     Ok(())
 }
 
-#[derive(sqlx::FromRow)]
+#[derive(sqlx::FromRow, Debug)]
 struct ForeignId {
-    id: String,
+    id: i32,
 }
 
-// Given an item id of a given table, return all the different refereces
+// Given an item id of a given table, return all the different refereces of said id
 async fn get_references(
     database_name: &str,
     state: State,
     table_name: &str,
-    id: &str,
+    id: i32,
 ) -> Result<(), sqlx::Error> {
+    println!("");
     // Get the pool
     let pool = find_database(database_name, state.clone()).unwrap();
 
-    // Gets the name of all the references table
+    // Gets the name of all the references table (e.g.: [tableOne_tableTwo, tableOne_tableTree])
     let query = format!(
         "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '{}_%'",
         table_name
     );
     let result: Vec<Reference> = sqlx::query_as(&query).fetch_all(&pool).await?;
+    println!("||> SELECTED ALL THE FOREIGN KEYS");
 
+    // For each val (which is the foreign key table)
     for val in result {
         // Select in the foreign key table the one that have the id
         let (_, other_table) = val.name.split_once("_").unwrap();
         let select_foreign = format!(
-            "SELECT {0}_id AS id FROM {1} WHERE {2}_id = '{3}'",
+            "SELECT {0}_id AS id FROM {1} WHERE {2}_id = {3}",
             other_table, val.name, table_name, id
         );
+        println!("{}", select_foreign);
 
-        // YOU WERE HERE -> You need to return all the different references of one item from a given table name
-        let select_foreign_items = format!("SELECT * FROM {0} WHERE id = ");
+        // Here you have every foreign id, and for each and everyone, you select the item
+        let foreign_ids = sqlx::query(&select_foreign).fetch_all(&pool).await?;
+        for row_id in foreign_ids {
+            let idx: i32 = row_id.get("id");
+            println!("||> SELECTED ALL THE FOREIGN KEYS {:?}", idx);
 
-        // We want to execute this thing, but then we enter the RAW data world
-        // because we do not know what this table looks like.
+            let select_foreign = format!("SELECT * FROM {0} WHERE id = {1}", other_table, idx);
+            let item_row = sqlx::query(&select_foreign).fetch_all(&pool).await?;
 
-        let result = sqlx::query(&select_foreign).fetch_all(&pool).await?;
+            for item in item_row {
+                let name: String = item.get("name");
+                println!("||> Item name: {}", name);
+            }
+        }
 
-        let json = convert_to_json(result);
-        println!("||> {:<12} {}", "FOREIGN DATA CONNECTION", json);
+        // for ids in foreign_ids {
+        //     // YOU WERE HERE -> You need to return all the different references of one item from a given table name
+        //     let select_foreign_items =
+        //         format!("SELECT * FROM {0} WHERE id = {1}", table_name, ids.id);
+
+        //     let sus: Vec<ForeignId> = sqlx::query_as(&select_foreign_items)
+        //         .fetch_all(&pool)
+        //         .await?;
+
+        //     // let id_json = convert_to_json(id);
+        //     println!("||> {:<12} {:?}", "ID_FOREIGN", sus[0]);
+        // }
+
+        // // We want to execute this thing, but then we enter the RAW data world
+        // // because we do not know what this table looks like.
+
+        // let result = sqlx::query(&select_foreign).fetch_all(&pool).await?;
+        // let json = convert_to_json(result);
+        // println!("||> {:<12} {}", "FOREIGN DATA CONNECTION", json);
     }
 
     Ok(())
@@ -584,7 +668,6 @@ fn convert_to_json(rows: Vec<SqliteRow>) -> Value {
 
 // TODO: Create connection between two records
 // async fn create_reference(database_name: &str, state: State, table_name: &str) {}
-//
 
 // TODO: Get foreign key connection -> given one table, return all of the present connections
 
