@@ -130,6 +130,7 @@ async fn main() {
             "tableTwo_id": 0
         }
     "#;
+
     // TODO: Specific function that connects two id in a foreign table
     add_to_table(first, state.clone(), "tableOne_tableTwo", &content_foreign)
         .await
@@ -280,6 +281,8 @@ async fn add_table(
             query = format!("{},", query);
         }
     }
+
+    // TODO: create metadata table
 
     query = format!("{})", query);
     println!("{}", query);
